@@ -5,7 +5,7 @@ URL_monitor.py
 
 Python3 program to monitor web site for availability and changes
 
-If URL returns and error, takes to long to respond or has changed then
+If URL returns an error, takes to long to respond or has changed then
 either bail out or print error with a timestamp
 
 @author: Michael O'Connor <gmikeoc@gmail.com>
