@@ -27,7 +27,6 @@ import time
 import boto3
 import requests
 from os import environ
-# from datetime import datetime, date
 from hashlib import sha1
 from timeit import default_timer as timer
 from botocore.exceptions import ProfileNotFound, ClientError
