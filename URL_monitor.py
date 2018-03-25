@@ -27,7 +27,7 @@ import time
 import boto3
 import requests
 from os import environ
-from datetime import datetime, date
+# from datetime import datetime, date
 from hashlib import sha1
 from timeit import default_timer as timer
 from botocore.exceptions import ProfileNotFound, ClientError
@@ -40,7 +40,7 @@ target_URL = 'http://www.rubrik.com/'
 # put in any string you like. After reporting the error, target will be reset to
 # current hash value
 
-target_Hash = '827fdbfa884e4e6562b28f7394a92e2de5d90610'
+target_Hash = '827fdbfa884e4e6562b28f7394a92e2de5d99999'
 
 # Where to store file locally for additional processing
 # Note this format is not portable across platforms
@@ -58,11 +58,13 @@ target_timeout = 1.5
 
 test_interval = 300
 
-# Take error message passed as an arguement, return with prepended date and time
+# Return current date and time with local TZ
 
-def timestamp(err_msg):
+def t_stamp():
 
-    time_msg = "\n{:%Y-%m-%d %H:%M:%S}: {}".format(datetime.now(), err_msg)
+    t = time.time()
+
+    time_msg = time.strftime('\n%Y-%m-%d %H:%M:%S %Z: ', time.localtime(t))
 
     return (time_msg)
 
@@ -171,13 +173,13 @@ def main():
 
         except requests.exceptions.HTTPError as e1:
             err_msg = "HTTP Error: " + str(e1)
-            print(timestamp(err_msg))
+            print(t_stamp() + err_msg)
             send_sms(client, target_URL + '\n' + err_msg)
             time.sleep(test_interval)
             continue
         except requests.exceptions.Timeout as e2:
             err_msg = "Timeout Error: " + str(e2)
-            print(timestamp(err_msg))
+            print(t_stamp() + err_msg)
             send_sms(client, target_URL + '\n' + err_msg)
             time.sleep(test_interval)
             continue
@@ -186,12 +188,12 @@ def main():
 
         except requests.exceptions.ConnectionError as e3:
             err_msg = "Connection Error: " + str(e3)
-            print(timestamp(err_msg))
+            print(t_stamp() + err_msg)
             send_sms(client, target_URL + "Abort Monitoring")
             quit()
         except requests.exceptions.RequestException as e4:
             err_msg = "Unknown Error: " + str(e4)
-            print(timestamp(err_msg))
+            print(t_stamp() + err_msg)
             send_sms(client, target_URL + "Abort Monitoring")
             quit()
 
@@ -199,7 +201,7 @@ def main():
 
         if latency >= target_timeout:
             err_msg = "Latency is: {0:4.2f}, threshold: {1}".format(latency, target_timeout)
-            print(timestamp(err_msg))
+            print(t_stamp() + err_msg)
             send_sms(client, target_URL + '\n' + err_msg)
 
         # Compute SHA1 hash of the URL contents so we can compare against previous.
@@ -208,8 +210,8 @@ def main():
         current_Hash = sha1(resp_URL.content).hexdigest()
 
         if current_Hash != target_Hash:
-            err_msg = "Hash is: {}, was: {}".format(hash_URL, target_Hash)
-            print(timestamp(err_msg))
+            err_msg = "Hash reset to: {}".format(current_Hash)
+            print(t_stamp() + err_msg)
             send_sms(client, target_URL + '\n' + err_msg)
             target_hash = current_Hash
 
