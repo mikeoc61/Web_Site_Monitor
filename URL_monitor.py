@@ -8,8 +8,10 @@
 + Python3 program to monitor a specific URL for availability and changes
 +
 + If URL returns an error, takes too long to respond or has changed then
-+ either bail out or print error with a timestamp. Also use AWS SNS service
-+ to send text message to phone number in form of +12345679999
++ either bail out or print error with a timestamp.
++
++ Program also uses AWS SNS service to send text message to phone number in
++ form of +12345679999
 +
 + Tested on:
 +
@@ -32,13 +34,13 @@ from botocore.exceptions import ProfileNotFound, ClientError
 
 # Name of URL we want to monitor
 
-target_URL = 'http://portfolio.mikeoc.me/'
+target_URL = 'http://www.rubrik.com/'
 
-# SHA1 hash of Target URL. If you don't know the sha1 hash of the target URL_monitor
-# put in any string you like and program will report back the hash of the target
-# contents. Use that value to initialize the variable
+# SHA1 hash of Target URL. If you don't have the sha1 hash of the target URL_monitor
+# put in any string you like. After reporting the error, target will be reset to
+# current hash value
 
-target_Hash = '8c99b43e437c65102039c2a23ba79a259545d9c3'
+target_Hash = '827fdbfa884e4e6562b28f7394a92e2de5d90610'
 
 # Where to store file locally for additional processing
 # Note this format is not portable across platforms
@@ -52,9 +54,9 @@ target_file = '/tmp/pymonitor.html'
 
 target_timeout = 1.5
 
-# How often to test, or sleep between tests in seconds
+# How often to test, or sleep between tests, in seconds
 
-test_interval = 360
+test_interval = 300
 
 # Take error message passed as an arguement, return with prepended date and time
 
@@ -67,7 +69,9 @@ def timestamp(err_msg):
 def send_sms(client, sms_msg):
 
     mobile_num = environ["CELL_PHONE"]
+
     client.publish(PhoneNumber=str(mobile_num), Message=str(sms_msg))
+
     return
 
 #------------------------------------------------------------
@@ -198,14 +202,16 @@ def main():
             print(timestamp(err_msg))
             send_sms(client, target_URL + '\n' + err_msg)
 
-        # Compute SHA1 hash of the URL contents so we can compare against expected
+        # Compute SHA1 hash of the URL contents so we can compare against previous.
+        # If changed, report then reset target to current
 
-        hash_URL = sha1(resp_URL.content).hexdigest()
+        current_Hash = sha1(resp_URL.content).hexdigest()
 
-        if hash_URL != target_Hash:
-            err_msg = "Hash is: {}, expected: {}".format(hash_URL, target_Hash)
+        if current_Hash != target_Hash:
+            err_msg = "Hash is: {}, was: {}".format(hash_URL, target_Hash)
             print(timestamp(err_msg))
             send_sms(client, target_URL + '\n' + err_msg)
+            target_hash = current_Hash
 
         # Save URL contents to a file in case we want to examine further
 
