@@ -35,12 +35,6 @@ from botocore.exceptions import ProfileNotFound, ClientError
 
 target_URL = 'http://www.rubrik.com/'
 
-# SHA1 hash of Target URL. If you don't have the sha1 hash of the target URL_monitor
-# put in any string you like. After reporting the error, target will be reset to
-# current hash value
-
-target_Hash = '827fdbfa884e4e6562b28f7394a92e2de5d99999'
-
 # Where to store file locally for additional processing
 # Note this format is not portable across platforms
 
@@ -150,13 +144,17 @@ def main():
     if client == False:
         quit()
 
+    # Initialize for good measure
+
+    err_msg = "No Trouble Found"
+
+    # SHA1 hash of Target URL. Initially set to bogus value as will be reset on 1st pass
+
+    target_Hash = '010101010110101010101010101'
+
     print ("\nMonitoring web site: {}".format(target_URL))
 
     while True:
-
-        # start of loop, initialize to normal
-
-        err_msg = "No Trouble Found"
 
         # Send get request to specified URL and test for errors
 
