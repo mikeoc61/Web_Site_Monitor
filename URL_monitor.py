@@ -212,7 +212,7 @@ def main():
             err_msg = "Hash reset to: {}".format(current_Hash)
             print(t_stamp() + err_msg)
             send_sms(client, target_URL + '\n' + err_msg)
-            target_hash = current_Hash
+            target_Hash = current_Hash
 
         # Save URL contents to a file in case we want to examine further
 
