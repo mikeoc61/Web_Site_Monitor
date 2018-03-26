@@ -35,7 +35,8 @@ from botocore.exceptions import ProfileNotFound, ClientError
 
 # Name of URL we want to monitor
 
-target_URL = 'http://www.rubrik.com/'
+target_URL = 'https://www.rubrik.com/'
+# target_URL = 'http://google.com/'
 
 # Where to store file locally for additional processing
 # Note this format is not portable across platforms
@@ -51,7 +52,7 @@ target_timeout = 2.0
 
 # How often to test, or sleep between tests (in seconds)
 
-test_interval = 5
+test_interval = 300
 
 # Return current date and time with local TZ
 
@@ -131,10 +132,11 @@ def check_authorization(service):
 
     mobile = environ["CELL_PHONE"]
     user = environ["AWS_PROFILE"]
+    test_msg = "Begin Monitoring " + target_URL
 
     try:
         client = boto3.client(service)
-        client.publish(PhoneNumber=mobile, Message="Begin Monitoring")
+        client.publish(PhoneNumber=mobile, Message=test_msg)
 
     except ProfileNotFound:
         print ("Error: AWS credentials not found for [{}]".format(user))
@@ -171,7 +173,7 @@ def main():
 
     err_msg = "**This should never happen**"
 
-    target_Hash = "not yet set"
+    previous_Hash = ""
 
     first_Pass = True
 
@@ -180,7 +182,7 @@ def main():
         # Sleep for specified time interval, if not first time through loop
 
         if first_Pass == True:
-            print ("\nMonitoring web site: {}".format(target_URL))
+            print ("\nBegin monitoring web site: {}".format(target_URL))
             first_Pass = False
         else:
             time.sleep(test_interval)
@@ -197,27 +199,27 @@ def main():
 
             resp_URL.raise_for_status()
 
-        # For HTTP, Timeout or Connection errors, alert and loop back to top
+        # For Timeout or Connection errors, alert and loop back to top
 
-        except requests.exceptions.HTTPError as e1:
-            err_msg = "HTTP Error: " + str(e1)
-            print(t_stamp() + err_msg)
-            send_sms(client, target_URL + '\n' + err_msg)
-            continue
-
-        except requests.exceptions.Timeout as e2:
-            err_msg = "Timeout Error: " + str(e2)
+        except requests.exceptions.Timeout as e1:
+            err_msg = "Timeout Error: " + str(e1)
             print(t_stamp() + err_msg)
             send_sms(client, target_URL + '\n' + "Timeout error")
             continue
 
-        except requests.exceptions.ConnectionError as e3:
-            err_msg = "Connection Error: " + str(e3)
+        except requests.exceptions.ConnectionError as e2:
+            err_msg = "Connection Error: " + str(e2)
             print(t_stamp() + err_msg)
             send_sms(client, target_URL + '\n' + "Connection error")
             continue
 
-        # For Unknown errors, exit program immediately
+        # For HTTP or Unknown errors, exit program immediately by leaving loop
+
+        except requests.exceptions.HTTPError as e3:
+            err_msg = "HTTP Error: " + str(e3)
+            print(t_stamp() + err_msg)
+            send_sms(client, target_URL + '\n' + err_msg)
+            break
 
         except requests.exceptions.RequestException as e4:
             err_msg = "Unknown Error: " + str(e4)
@@ -237,11 +239,15 @@ def main():
 
         current_Hash = sha1(resp_URL.content).hexdigest()
 
-        if current_Hash != target_Hash:
-            err_msg = " Hash reset to: {}".format(current_Hash)
+        if current_Hash != previous_Hash:
+            if previous_Hash == "":
+                err_msg = "Hash set to: {}".format(current_Hash)
+            else:
+                err_msg = "Hash changed to: {}".format(current_Hash)
+                send_sms(client, target_URL + '\n' + "Web site content changed")
+
             print(t_stamp() + err_msg)
-            send_sms(client, target_URL + '\n' + "Web site content changed")
-            target_Hash = current_Hash
+            previous_Hash = current_Hash
 
         # Save URL contents to local filesystem in case we want to examine further
 
@@ -253,14 +259,14 @@ def main():
 
     # If reaching this point, something has gone wrong
 
-    print(t_stamp() + "Monitoring Abnormally Terminated")
+    print(t_stamp() + "Program terminated due to serious problem")
 
     sys.exit(1)
 
 # Signal handler for CTRL-C manual termination
 
 def signal_handler(signal, frame):
-    print("\nProgram exiting gracefully")
+    print("\nProgram terminated manually")
     sys.exit(0)
 
 # If called from shell as script
