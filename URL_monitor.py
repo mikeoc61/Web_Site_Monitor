@@ -49,7 +49,7 @@ target_file = '/tmp/pymonitor.html'
 # which is dependent on client host performance, network and workload.
 # In most cases do not set this to less than 2.0 seconds
 
-target_timeout = 0.1
+target_timeout = 2.0
 
 # How often to check, or sleep between checks (in seconds). 5 min seems reasonable
 
@@ -82,12 +82,12 @@ def validate_environment():
 
     try:
         aws_profile = environ["AWS_PROFILE"]
-        resp = input ("AWS_PROFILE = [{0}]. Press enter to confirm or specify new: ".format(aws_profile))
+        resp = input ("AWS_PROFILE = [{}]. Press enter to confirm or specify new: ".format(aws_profile))
 
         # If response if not NULL, change profile value to new
 
         if bool(resp.strip()):
-            print ("AWS Profile changed to [{0}]".format(resp))
+            print ("AWS Profile changed to [{}]".format(resp))
             aws_profile = resp
 
     except KeyError:
@@ -99,12 +99,12 @@ def validate_environment():
 
         try:
             target_phone = environ["CELL_PHONE"]
-            resp = input ("CELL_PHONE = [{0}]. Press enter to confirm or specify new: ".format(target_phone))
+            resp = input ("CELL_PHONE = [{}]. Press enter to confirm or specify new: ".format(target_phone))
 
             # If response if not NULL, change phone number to new number provided
 
             if bool(resp.strip()):
-                print ("Mobile changed to [{0}]".format(resp))
+                print ("Mobile changed to [{}]".format(resp))
                 target_phone = resp
 
         except KeyError:
@@ -123,7 +123,7 @@ def validate_environment():
 #----------------------------------------------------------------------------
 # Confirm user is known to AWS and that user has required SNS authorization
 # Assumes that environment variables have been previously set. If attempt to
-# send initial SMS message via SNS fails, set global variable AWS_Valid to False
+# send initial SMS message via SNS succeeds, set global AWS_Valid to True
 # ---------------------------------------------------------------------------
 
 def check_authorization(service):
@@ -132,7 +132,7 @@ def check_authorization(service):
     user = environ["AWS_PROFILE"]
     test_msg = "Begin Monitoring: " + target_URL
 
-    global AWS_Valid                       # Set global so we can toggle
+    global AWS_Valid                       # Make global so we can toggle
 
     try:
         client = boto3.client(service)
@@ -159,7 +159,7 @@ def check_authorization(service):
 
 def send_sms(client, message):
 
-    if AWS_Valid == True:             # AWS is configured and availble
+    if AWS_Valid == True:
 
         mobile_num = environ["CELL_PHONE"]
 
@@ -173,8 +173,8 @@ def send_sms(client, message):
         except ClientError:
             print ("Error: Unable to send SMS message via AWS")
 
-    else:                            # AWS is not configured, so do nothing
-        return
+    else:
+        pass
 
 #-------------------------------------------------------------
 # Print output to console with time stamp. Output consists of
@@ -182,11 +182,7 @@ def send_sms(client, message):
 #-------------------------------------------------------------
 
 def send_console(raw_msg, short_msg):
-
-    # Send formatted output to console
-
     print("{} {}: {}".format(t_stamp(), short_msg, raw_msg))
-
     return
 
 #------------------------------------------------------------
@@ -207,7 +203,6 @@ def main():
     # Initialize variables for good measure. All will be reset in main loop
 
     previous_Hash = ""
-
     first_Pass = True
 
     # Main loop. Stay in loop unless unrecoverable error detected or sighup
@@ -251,7 +246,7 @@ def main():
             send_sms(client, "Connection Error")
             continue
 
-        # For HTTP or Unknown errors, exit program immediately by leaving loop
+        # For HTTP or Unknown errors, log error and leave loop
 
         except requests.exceptions.HTTPError as e3:
             send_console(e3, "HTTP Error")
@@ -263,9 +258,10 @@ def main():
             send_sms(client, "Unknown Error")
             break
 
-        # Calculate latency on URL get request. Complain if too long
+        # Calculate latency on URL get request. Complain if too slow
 
         if latency >= target_timeout:
+            print ('\n')                          # To left align console output
             err_msg = "{:4.2f}s, threshold: {}s".format(latency, target_timeout)
             send_console(err_msg, "Slow response")
             send_sms(client, "Slow response")
@@ -279,21 +275,22 @@ def main():
             if previous_Hash == "":
                 send_console(current_Hash, "Hash set to")
             else:
+                print ('\n')                      # To left align console output
                 send_console(current_Hash, "Hash changed to")
                 send_sms(client, "Web site contents changed")
 
             previous_Hash = current_Hash
 
-        # Save URL contents to local filesystem in case we want to examine further
+        # Save URL contents to local filesystem. May examine further
 
         file = open(target_file, "w+")
         file.write(resp_URL.text)
         file.close()
 
-    # If reaching this point, something has gone wrong
+    # If reaching this point, something unexpected has happened
 
-    print(t_stamp() + "Program terminated due to serious problem")
-
+    send_console("Program experienced unexpected problem", "Abort")
+    send_sms(client, "Monitoring terminated due to unexpected problem")
     sys.exit(1)
 
 # Signal handler for CTRL-C manual termination
