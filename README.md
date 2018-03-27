@@ -18,6 +18,9 @@ requires that the following environment variables be set:
 
   CELL_PHONE = country code and 10-digit phone number. Currently only supports US '+1'
 
+The following reddit post may be helpful in understanding some of the subtleties of the
+AWS SNS service: https://www.reddit.com/r/aws/comments/63vldy/our_experience_using_aws_sns_for_sms/
+
 # Requirements
 
 Python3
