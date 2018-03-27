@@ -67,16 +67,15 @@ AWS_Valid = False
 def t_stamp():
 
     t = time.time()
-
     time_msg = time.strftime('%Y-%m-%d %H:%M:%S %Z: ', time.localtime(t))
-
     return (time_msg)
 
-#------------------------------------------------------------
+#--------------------------------------------------------------
 # Check environment for variables CELL_PHONE and AWS_PROFILE.
 # Prompt to confirm or change if needed. Both need to be set
-# in order for AWS SNS service to work correctly.
-#------------------------------------------------------------
+# and valid in order for AWS SNS service to work correctly.
+# Note we don't attempt to validate AWS_Profile at this stage.
+#--------------------------------------------------------------
 
 def validate_environment():
 
@@ -91,7 +90,7 @@ def validate_environment():
             aws_profile = resp
 
     except KeyError:
-        aws_profile = input ("AWS_PROFILE not set. Please enter a valid AWS_Profile: ")
+        aws_profile = input ("AWS_PROFILE not set. Please enter a valid AWS_PROFILE: ")
 
     environ["AWS_PROFILE"] = aws_profile
 
@@ -185,6 +184,22 @@ def send_console(raw_msg, short_msg):
     print("{} {}: {}".format(t_stamp(), short_msg, raw_msg))
     return
 
+#--------------------------------------------------------
+# Display alternating characters on console to mark time
+#--------------------------------------------------------
+
+last_char = 'x'
+
+def show_progress(char_a, char_b):
+    global last_char
+
+    if last_char == char_a:
+        last_char = char_b
+    else:
+        last_char = char_a
+
+    print(last_char, end='', flush=True)
+
 #------------------------------------------------------------
 # Main body of program
 #------------------------------------------------------------
@@ -219,7 +234,7 @@ def main():
                 send_console(target_URL, "AWS SNS messaging not configured for")
             first_Pass = False
         else:
-            print('.', end='', flush=True)    # Output stream of dots
+            show_progress('+', '|')
             time.sleep(test_interval)
 
         # Send get request to specified URL and trap errors
@@ -237,6 +252,7 @@ def main():
         # For Timeout or Connection errors, alert and loop back to top
 
         except requests.exceptions.Timeout as e1:
+            print('\n')
             send_console(e1, "Timeout Error")
             send_sms(client, "Timeout error")
             continue
