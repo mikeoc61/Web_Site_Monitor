@@ -10,9 +10,9 @@ Simple Python program which opens a target URL and then loops at a specified int
 
 If there are problems with these, the program either terminates or reports the problem with a timestamp
 
-Program also utilizes AWS SNS service to alert a mobile number of problems.
-As such, AWS SDK with Boto3 need to be installed and configured. Program
-requires that the following environment variables be set:
+Program optionally utilizes AWS SNS service to alert a mobile number of problems.
+As such, AWS SDK with Boto3 needs to be installed and configured. Program
+requires and promts for the following environment:
 
   AWS_PROFILE = profile defined in users ~/.aws/configure and credentials files
 
@@ -25,13 +25,13 @@ AWS SNS service: https://www.reddit.com/r/aws/comments/63vldy/our_experience_usi
 
 Python3
 
-> $ brew install python3
+> $ brew install python3 (recommended method for MacOS)
 
 AWS CLI to set up environment used to configure user profile and keys in ~/.aws
 and for Boto3 python modules
 
-> $ pip install awscli
+> $ brew install awscli (recommended method for MacOS)
 
 # Tested with
 
-- MacOS 10.13.3 and Python 3.6.4
+- MacOS 10.13/14 and Python 3.6/7
