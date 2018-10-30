@@ -17,22 +17,35 @@ __copyright__   = "Copyright 2018"
 
 import sys
 import time
-import boto3
 import signal
 import requests
+import platform
 from os import environ
 from hashlib import sha1
 from timeit import default_timer as timer
-from botocore.exceptions import ProfileNotFound, ClientError
+
+host_type = platform.system()
+machine_type = platform.machine()
+
+print (f'Detected OS = {host_type}, Machine = {machine_type}')
+if machine_type == 'x86_64':
+    try:
+        import boto3
+        from botocore.exceptions import ProfileNotFound, ClientError
+    except ImportError:
+        print(f'Unable to load Boto3 or botocore modules')
 
 # Name of URL we want to monitor
 
 target_URL = "http://www.mikeoc.me"
 
 # Local file to store URL contents for additional processing
-# Note this format is not portable across platforms
+# Note this format is not portable across non UNIX/Linux platforms.
 
-target_file = '/tmp/pymonitor.html'
+if host_type == 'Darwin' or host_type == 'Linux':
+    target_file = '/tmp/URL_monitor.html'
+else:
+    target_file = None
 
 # Acceptable amount of time for URL get before we raise an exception
 # Need to give web site a reasonable amount of time to respond to request
@@ -67,7 +80,7 @@ def t_stamp():
 # Note we don't attempt to validate AWS_Profile at this stage.
 #--------------------------------------------------------------
 
-def validate_environment():
+def validate_aws_env():
     try:
         aws_profile = environ["AWS_PROFILE"]
         #resp = input ("AWS_PROFILE = [{}]. Press enter to confirm or specify new: ".format(aws_profile))
@@ -200,10 +213,10 @@ def main():
         raise SystemExit()
     elif arg_cnt == 2 and sys.argv[1] == "-sns":
         print("Configuring for AWS SNS notification")
-        validate_environment()
+        validate_aws_env()
         client = check_authorization('sns')
         if client == False:
-             raise SystemExit()
+            raise SystemExit()
 
     # Initialize variables for good measure. All will be reset in main loop
 
@@ -285,9 +298,10 @@ def main():
 
         # Save URL contents to local filesystem. May examine further
 
-        file = open(target_file, "w+")
-        file.write(resp_URL.text)
-        file.close()
+        if target_file:
+            file = open(target_file, "w+")
+            file.write(resp_URL.text)
+            file.close()
 
     # If reaching this point, something unexpected has happened
 
