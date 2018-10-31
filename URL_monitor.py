@@ -7,7 +7,7 @@
 +
 + See README.md for more detail
 +
-+ Last update: 10/30/18
++ Last update: 10/31/18
 +
 +-------------------------------------------------------------------------------
 '''
@@ -15,34 +15,28 @@
 __author__      = "Michael E. O'Connor"
 __copyright__   = "Copyright 2018"
 
+import os
 import sys
 import time
 import signal
 import requests
-import platform
-from os import environ
 from hashlib import sha1
 from timeit import default_timer as timer
 
-host_type = platform.system()
-machine_type = platform.machine()
-
-print (f'Detected OS = {host_type}, Machine = {machine_type}')
-if machine_type == 'x86_64':
-    try:
-        import boto3
-        from botocore.exceptions import ProfileNotFound, ClientError
-    except ImportError:
-        print(f'Unable to load Boto3 or botocore modules')
+try:
+    import boto3
+    from botocore.exceptions import ProfileNotFound, ClientError
+except ImportError:
+    print(f'Unable to load Boto3 or botocore modules')
 
 # Name of URL we want to monitor
 
 target_URL = "http://www.mikeoc.me"
 
 # Local file to store URL contents for additional processing
-# Note this format is not portable across non UNIX/Linux platforms.
+# Note format is not portable across non-posix platforms.
 
-if host_type == 'Darwin' or host_type == 'Linux':
+if os.name == 'posix':
     target_file = '/tmp/URL_monitor.html'
 else:
     target_file = None
@@ -59,14 +53,14 @@ target_timeout = 5.0
 
 test_interval = 300
 
-# Global variable used to determine if we should alert using AWS SMS.
+# Global variable used to control use AWS SMS to alert about problems
 # Initially set to False, toggled in check_authorization() as appropriate
 
 AWS_Valid = False
 
-#---------------------------------------------------
-# Return current date and time with local TZ
-#---------------------------------------------------
+#-----------------------------------------------------
+# Return current date and time configured for local TZ
+#-----------------------------------------------------
 
 def t_stamp():
     t = time.time()
@@ -82,11 +76,8 @@ def t_stamp():
 
 def validate_aws_env():
     try:
-        aws_profile = environ["AWS_PROFILE"]
-        #resp = input ("AWS_PROFILE = [{}]. Press enter to confirm or specify new: ".format(aws_profile))
+        aws_profile = os.environ["AWS_PROFILE"]
         resp = input (f'AWS_PROFILE = [{aws_profile}]. Press enter to confirm or specify new: ')
-
-        # If response if not NULL, change profile value to new
 
         if bool(resp.strip()):
             print (f'AWS Profile changed to [{resp}]')
@@ -95,14 +86,12 @@ def validate_aws_env():
     except KeyError:
         aws_profile = input ("AWS_PROFILE not set. Please enter a valid AWS_PROFILE: ")
 
-    environ["AWS_PROFILE"] = aws_profile
+    os.environ["AWS_PROFILE"] = aws_profile
 
     while True:             # Allow user multiple attempts to get it right
         try:
-            target_phone = environ["CELL_PHONE"]
+            target_phone = os.environ["CELL_PHONE"]
             resp = input (f'CELL_PHONE = [{target_phone}]. Press enter to confirm or specify new: ')
-
-            # If response if not NULL, change phone number to new number provided
 
             if bool(resp.strip()):
                 print (f'Mobile changed to [{resp}]')
@@ -114,7 +103,7 @@ def validate_aws_env():
         # Validate phone number format, break if correct, warn and loop if not
 
         if (len(target_phone) == 12) and (target_phone[0:2] == '+1'):
-            environ["CELL_PHONE"] = target_phone
+            os.environ["CELL_PHONE"] = target_phone
             break
         else:
             print ("Error: phone # must start with +1 followed by 10 digits")
@@ -129,8 +118,8 @@ def validate_aws_env():
 
 def check_authorization(service):
 
-    mobile = environ["CELL_PHONE"]
-    user = environ["AWS_PROFILE"]
+    mobile = os.environ["CELL_PHONE"]
+    user = os.environ["AWS_PROFILE"]
     test_msg = "Begin Monitoring: " + target_URL
 
     global AWS_Valid                       # Make global so we can toggle
@@ -230,12 +219,11 @@ def main():
         # Sleep for specified time interval, if not first time through loop
 
         if first_Pass == True:
+            send_console(os.name, "Operating Systems Type is")
             send_console(target_URL, "Begin monitoring URL")
             send_console("", "Monitoring interval [{}s], response threshold [{}s]".format(test_interval, target_timeout))
-            if AWS_Valid:
-                send_console(target_URL, "AWS SNS Notification is active for")
-            else:
-                send_console(target_URL, "AWS SNS messaging not configured for")
+            if AWS_Valid: send_console(target_URL, "AWS SNS Notification is active for")
+            if target_file: send_console(target_file, "Writing URL contents to")
             first_Pass = False
         else:
             show_progress('+', '|')
@@ -292,11 +280,11 @@ def main():
                 send_console(current_Hash, "Initial hash")
             else:
                 send_console(current_Hash, "\nHash changed to")
-                if AWS_Valid: send_sms(client, "Contents changed")
+                if AWS_Valid: send_sms(client, "Web Site Contents changed")
 
             previous_Hash = current_Hash
 
-        # Save URL contents to local filesystem. May examine further
+        # Save URL contents to local filesystem if configured
 
         if target_file:
             file = open(target_file, "w+")
