@@ -7,7 +7,7 @@
 +
 + See README.md for more detail
 +
-+ Last update: 10/31/18
++ Last update: 11/01/18
 +
 +-------------------------------------------------------------------------------
 '''
@@ -116,17 +116,17 @@ def validate_aws_env():
 # send initial SMS message via SNS succeeds, set global AWS_Valid to True
 # ---------------------------------------------------------------------------
 
-def check_authorization(service):
+def validate_aws_auth(service):
 
     mobile = os.environ["CELL_PHONE"]
     user = os.environ["AWS_PROFILE"]
-    test_msg = "Begin Monitoring: " + target_URL
+    message = "Begin Monitoring: " + target_URL
 
     global AWS_Valid                       # Make global so we can toggle
 
     try:
         client = boto3.client(service)
-        client.publish(PhoneNumber=mobile, Message=test_msg)
+        client.publish(PhoneNumber=mobile, Message=message)
         AWS_Valid = True
 
     except ProfileNotFound:
@@ -164,8 +164,8 @@ def send_sms(client, message):
 # message detail (raw_msg) and summary info (short_msg)
 #-------------------------------------------------------------
 
-def send_console(raw_msg, short_msg):
-    print("{} {}: {}".format(t_stamp(), short_msg, raw_msg))
+def send_console(short_msg, raw_msg = "", cr = ""):
+    print(cr + "{} {}: {}".format(t_stamp(), short_msg, raw_msg))
     return
 
 #--------------------------------------------------------
@@ -174,7 +174,7 @@ def send_console(raw_msg, short_msg):
 
 last_char = 'x'
 
-def show_progress(char_a, char_b):
+def show_progress(char_a = '+', char_b = '|'):
     global last_char
 
     if last_char == char_a:
@@ -203,13 +203,13 @@ def main():
     elif arg_cnt == 2 and sys.argv[1] == "-sns":
         print("Configuring for AWS SNS notification")
         validate_aws_env()
-        client = check_authorization('sns')
+        client = validate_aws_auth('sns')
         if client == False:
             raise SystemExit()
 
     # Initialize variables for good measure. All will be reset in main loop
 
-    previous_Hash = ""
+    previous_Hash = None
     first_Pass = True
 
     # Main loop. Stay in loop unless unrecoverable error detected or sighup
@@ -219,14 +219,14 @@ def main():
         # Sleep for specified time interval, if not first time through loop
 
         if first_Pass == True:
-            send_console(os.name, "Operating Systems Type is")
-            send_console(target_URL, "Begin monitoring URL")
-            send_console("", "Monitoring interval [{}s], response threshold [{}s]".format(test_interval, target_timeout))
-            if AWS_Valid: send_console(target_URL, "AWS SNS Notification is active for")
-            if target_file: send_console(target_file, "Writing URL contents to")
+            send_console("Operating Systems Type is", os.name)
+            send_console("Begin monitoring URL", target_URL)
+            send_console("Monitoring interval [{}s], response threshold [{}s]".format(test_interval, target_timeout))
+            if AWS_Valid: send_console("AWS SNS Notification is active for", target_URL)
+            if target_file: send_console("Saving URL contents to file", target_file)
             first_Pass = False
         else:
-            show_progress('+', '|')
+            show_progress()
             time.sleep(test_interval)
 
         # Send get request to specified URL and trap errors
@@ -241,45 +241,43 @@ def main():
             resp_URL.raise_for_status()
 
         except requests.exceptions.Timeout as e1:
-            send_console(e1, "\nTimeout Error")
+            send_console("Timeout Error", e1, "\n")
             if AWS_Valid: send_sms(client, "Timeout error")
             continue
 
         except requests.exceptions.ConnectionError as e2:
-            send_console(e2, "\nConnection Error")
+            send_console("Connection Error", e2, "\n")
             if AWS_Valid: send_sms(client, "Connection Error")
             continue
 
         # For HTTP or Unknown errors, log error and leave loop
 
         except requests.exceptions.HTTPError as e3:
-            send_console(e3, "\nHTTP Error")
+            send_console("HTTP Error", e3, "\n")
             if AWS_Valid: send_sms(client, "HTTP Error")
             break
 
         except requests.exceptions.RequestException as e4:
-            send_console(e4, "\nUnknown Error")
+            send_console("Unknown Error", e4, "\n")
             if AWS_Valid: send_sms(client, "Unknown Error")
             break
 
         # Calculate latency on URL get request. Complain if too slow
 
         if latency >= target_timeout:
-            print ('\n')                          # To left align console output
             err_msg = "{:4.2f}s, threshold: {}s".format(latency, target_timeout)
-            send_console(err_msg, "Slow response")
+            send_console("Slow response", err_msg, "\n")
             if AWS_Valid: send_sms(client, "Slow response")
 
         # Compute SHA1 hash of the URL contents so we can compare against previous.
-        # If changed, report and then reset target hash to current hash value
 
         current_Hash = sha1(resp_URL.content).hexdigest()
 
         if current_Hash != previous_Hash:
-            if previous_Hash == "":
-                send_console(current_Hash, "Initial hash")
+            if previous_Hash == None:
+                send_console("Initial URL hash", current_Hash)
             else:
-                send_console(current_Hash, "\nHash changed to")
+                send_console("URL Hash changed to", current_Hash, "\n")
                 if AWS_Valid: send_sms(client, "Web Site Contents changed")
 
             previous_Hash = current_Hash
@@ -293,14 +291,14 @@ def main():
 
     # If reaching this point, something unexpected has happened
 
-    send_console("Program experienced unexpected problem", "Abort")
+    send_console("Abort", "Program experienced unexpected problem", "\n")
     if AWS_Valid: send_sms(client, "Monitoring terminated due to unexpected problem")
     raise SystemExit()
 
 # Signal handler for CTRL-C manual termination
 
 def signal_handler(signal, frame):
-    print("\nProgram terminated manually")
+    send_console("Program terminated manually", "", "\n")
     raise SystemExit()
 
 # If called from shell as script
