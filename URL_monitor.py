@@ -148,16 +148,14 @@ def validate_aws_auth(service):
 
 def send_sms(client, message):
 
-    mobile_num = environ["CELL_PHONE"]
+    mobile_num = os.environ["CELL_PHONE"]
 
-    message += ": " + target_URL
-
-    send_console ("Msg= {}, num= {}".format(message, mobile_num), "Sending SMS")
+    send_console ("Sending SMS", "Msg= {}, num= {}".format(message, mobile_num))
 
     try:
         client.publish(PhoneNumber=mobile_num, Message=message)
     except ClientError:
-        print ("Error: Unable to send SMS message via AWS")
+        send_console ("Error:", "Unable to send SMS message via AWS", "\n")
 
 #-------------------------------------------------------------
 # Print output to console with time stamp. Output consists of
@@ -267,7 +265,7 @@ def main():
         if latency >= target_timeout:
             err_msg = "{:4.2f}s, threshold: {}s".format(latency, target_timeout)
             send_console("Slow response", err_msg, "\n")
-            if AWS_Valid: send_sms(client, "Slow response")
+            if AWS_Valid: send_sms(client, "Slow response: " + err_msg)
 
         # Compute SHA1 hash of the URL contents so we can compare against previous.
 
