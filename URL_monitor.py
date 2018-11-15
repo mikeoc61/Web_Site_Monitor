@@ -7,7 +7,7 @@
 +
 + See README.md for more detail
 +
-+ Last update: 11/01/18
++ Last update: 11/15/18
 +
 +-------------------------------------------------------------------------------
 '''
@@ -167,20 +167,14 @@ def send_console(short_msg, raw_msg = "", cr = ""):
     return
 
 #--------------------------------------------------------
-# Display alternating characters on console to mark time
+# Generator to return alternating characters to mark time
 #--------------------------------------------------------
 
-last_char = 'x'
-
-def show_progress(char_a = '+', char_b = '|'):
-    global last_char
-
-    if last_char == char_a:
-        last_char = char_b
-    else:
-        last_char = char_a
-
-    print(last_char, end='', flush=True)
+def gen_progress():
+    a, b = '+', '|'
+    while True:
+        yield a
+        a, b = b, a
 
 #------------------------------------------------------------
 # Main body of program
@@ -222,9 +216,10 @@ def main():
             send_console("Monitoring interval [{}s], response threshold [{}s]".format(test_interval, target_timeout))
             if AWS_Valid: send_console("AWS SNS Notification is active for", target_URL)
             if target_file: send_console("Saving URL contents to file", target_file)
+            prog_char = gen_progress()
             first_Pass = False
         else:
-            show_progress()
+            print(next(prog_char), end='', flush=True)
             time.sleep(test_interval)
 
         # Send get request to specified URL and trap errors
