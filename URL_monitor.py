@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 '''
 +-------------------------------------------------------------------------------
@@ -23,23 +23,17 @@ import requests
 from hashlib import sha1
 from timeit import default_timer as timer
 
+# AWS Boto3 and botocore only needed when using AWS SNS notification service option
+
 try:
     import boto3
     from botocore.exceptions import ProfileNotFound, ClientError
 except ImportError:
-    print(f'Unable to load Boto3 or botocore modules')
+    print('Unable to load Boto3 or botocore modules')
 
 # Name of URL we want to monitor
 
 target_URL = "http://www.mikeoc.me"
-
-# Local file to store URL contents for additional processing
-# Note format is not portable across non-posix platforms.
-
-if os.name == 'posix':
-    target_file = '/tmp/URL_monitor.html'
-else:
-    target_file = None
 
 # Acceptable amount of time for URL get before we raise an exception
 # Need to give web site a reasonable amount of time to respond to request
@@ -77,10 +71,10 @@ def t_stamp():
 def validate_aws_env():
     try:
         aws_profile = os.environ["AWS_PROFILE"]
-        resp = input (f'AWS_PROFILE = [{aws_profile}]. Press enter to confirm or specify new: ')
+        resp = input ('AWS_PROFILE = [{aws_profile}]. Press enter to confirm or specify new: ')
 
         if bool(resp.strip()):
-            print (f'AWS Profile changed to [{resp}]')
+            print ('AWS Profile changed to [{resp}]')
             aws_profile = resp
 
     except KeyError:
@@ -91,10 +85,10 @@ def validate_aws_env():
     while True:             # Allow user multiple attempts to get it right
         try:
             target_phone = os.environ["CELL_PHONE"]
-            resp = input (f'CELL_PHONE = [{target_phone}]. Press enter to confirm or specify new: ')
+            resp = input ('CELL_PHONE = [{target_phone}]. Press enter to confirm or specify new: ')
 
             if bool(resp.strip()):
-                print (f'Mobile changed to [{resp}]')
+                print ('Mobile changed to [{resp}]')
                 target_phone = resp
 
         except KeyError:
@@ -170,11 +164,13 @@ def send_console(short_msg, raw_msg = "", cr = ""):
 # Generator to return alternating characters to mark time
 #--------------------------------------------------------
 
-def gen_progress():
-    a, b = '+', '|'
+def gen_progress(*chars):
+    i = 0
     while True:
-        yield a
-        a, b = b, a
+        if i == len(chars): i = 0
+        yield chars[i]
+        i += 1
+
 
 #------------------------------------------------------------
 # Main body of program
@@ -215,11 +211,10 @@ def main():
             send_console("Begin monitoring URL", target_URL)
             send_console("Monitoring interval [{}s], response threshold [{}s]".format(test_interval, target_timeout))
             if AWS_Valid: send_console("AWS SNS Notification is active for", target_URL)
-            if target_file: send_console("Saving URL contents to file", target_file)
-            prog_char = gen_progress()
+            prog_char = gen_progress("/", "-", "\\")
             first_Pass = False
         else:
-            print(next(prog_char), end='', flush=True)
+            print(next(prog_char), end='\b', flush=True)
             time.sleep(test_interval)
 
         # Send get request to specified URL and trap errors
@@ -274,13 +269,6 @@ def main():
                 if AWS_Valid: send_sms(client, "Web Site Contents changed")
 
             previous_Hash = current_Hash
-
-        # Save URL contents to local filesystem if configured
-
-        if target_file:
-            file = open(target_file, "w+")
-            file.write(resp_URL.text)
-            file.close()
 
     # If reaching this point, something unexpected has happened
 
