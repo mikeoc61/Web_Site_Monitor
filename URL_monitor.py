@@ -167,10 +167,8 @@ def send_console(short_msg, raw_msg = "", cr = ""):
 def gen_progress(*chars):
     i = 0
     while True:
-        if i == len(chars): i = 0
         yield chars[i]
-        i += 1
-
+        i = 0 if i == (len(chars) - 1) else (i + 1)
 
 #------------------------------------------------------------
 # Main body of program
@@ -211,7 +209,7 @@ def main():
             send_console("Begin monitoring URL", target_URL)
             send_console("Monitoring interval [{}s], response threshold [{}s]".format(test_interval, target_timeout))
             if AWS_Valid: send_console("AWS SNS Notification is active for", target_URL)
-            prog_char = gen_progress("/", "-", "\\")
+            prog_char = gen_progress('/', '-', '\\', '-')
             first_Pass = False
         else:
             print(next(prog_char), end='\b', flush=True)
