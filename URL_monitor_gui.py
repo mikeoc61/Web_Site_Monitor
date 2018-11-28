@@ -51,11 +51,13 @@ sites = {
 }
 
 #-------------------------------------------------------------------------
-# Global variable used to control use AWS SMS to alert about problems
-# Initially set to False, toggled in check_authorization() as appropriate
+# Global variables used to control use AWS SMS to alert about problems
+# AWS_Valid used to control if AWS SNS will be used to notify User
+# Sns_client used to store AWS botocore SNS object
 #-------------------------------------------------------------------------
 
 AWS_Valid = False
+Sns_client = True
 
 #-------------------------------------------------------------------------
 # Global variable used as a flag to control termination of monitoring thread.
@@ -126,7 +128,7 @@ def validate_aws_auth(service):
 
     mobile = os.environ["CELL_PHONE"]
     user = os.environ["AWS_PROFILE"]
-    message = "Begin Monitoring: " + target_URL
+    message = "Begin Monitoring: "
 
     global AWS_Valid                       # Make global so we can toggle
 
@@ -303,24 +305,24 @@ class monitor(threading.Thread):
 
             except requests.exceptions.Timeout as e1:
                 self.output("Timeout Error", e1, "\n")
-                if AWS_Valid: send_sms(client, "Timeout error")
+                if AWS_Valid: send_sms(Sns_client, "Timeout error")
                 continue
 
             except requests.exceptions.ConnectionError as e2:
                 self.output("Connection Error", e2, "\n")
-                if AWS_Valid: send_sms(client, "Connection Error")
+                if AWS_Valid: send_sms(Sns_client, "Connection Error")
                 continue
 
             # For HTTP or Unknown errors, log error and leave loop
 
             except requests.exceptions.HTTPError as e3:
                 self.output("HTTP Error", e3, "\n")
-                if AWS_Valid: send_sms(client, "HTTP Error")
+                if AWS_Valid: send_sms(Sns_client, "HTTP Error")
                 break
 
             except requests.exceptions.RequestException as e4:
                 self.output("Unknown Error", e4, "\n")
-                if AWS_Valid: send_sms(client, "Unknown Error")
+                if AWS_Valid: send_sms(Sns_client, "Unknown Error")
                 break
 
             # Calculate latency on URL get request. Complain if too slow
@@ -330,7 +332,7 @@ class monitor(threading.Thread):
             if latency >= self.timeout:
                 err_msg = "{}:{:4.2f}s, threshold: {}s".format(self.url, latency, self.timeout)
                 self.output("Slow response", err_msg, "\n")
-                if AWS_Valid: send_sms(client, "Slow response: " + err_msg)
+                if AWS_Valid: send_sms(Sns_client, "Slow response: " + err_msg)
 
             # Compute SHA1 hash of the URL contents so we can compare against previous.
 
@@ -341,7 +343,7 @@ class monitor(threading.Thread):
                     self.output(self.url + " Hash", current_Hash)
                 else:
                     self.output(self.url + " Hash changed", current_Hash, "\n")
-                    if AWS_Valid: send_sms(client, "Web Site Contents changed")
+                    if AWS_Valid: send_sms(Sns_client, "Web Site Contents changed")
 
                 previous_Hash = current_Hash
 
@@ -366,6 +368,26 @@ class monitor(threading.Thread):
 #------------------------------------------------------------
 
 def main():
+
+    global Sns_client
+
+    # Parse input looking for argument to specify AWS SMS integration
+    arg_cnt = len(sys.argv)
+
+    if arg_cnt > 2:
+        print("Usage: {} <-sns>".format(sys.argv[0]))
+        raise SystemExit()
+    elif arg_cnt == 2 and sys.argv[1] != "-sns":
+        print("Usage: {} <-sns>".format(sys.argv[0]))
+        raise SystemExit()
+    elif arg_cnt == 2 and sys.argv[1] == "-sns":
+        print("Configuring for AWS SNS notification")
+        validate_aws_env()
+        Sns_client = validate_aws_auth('sns')
+        print(Sns_client)
+        if Sns_client == False:
+            raise SystemExit()
+
     root = Tk()
     Monitor_Gui(root)
     root.mainloop()
