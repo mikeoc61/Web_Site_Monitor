@@ -12,8 +12,8 @@
 +-------------------------------------------------------------------------------
 '''
 
-__author__      = "Michael E. O'Connor"
-__copyright__   = "Copyright 2018"
+__author__      = 'Michael E. OConnor'
+__copyright__   = 'Copyright 2018'
 
 import os
 import sys
@@ -33,7 +33,7 @@ except ImportError:
 
 # Name of URL we want to monitor
 
-target_URL = "http://www.mikeoc.me"
+target_URL = 'http://www.mikeoc.me'
 
 # Acceptable amount of time for URL get before we raise an exception
 # Need to give web site a reasonable amount of time to respond to request
@@ -47,18 +47,21 @@ target_timeout = 5.0
 
 test_interval = 300
 
+#-------------------------------------------------------------------------
 # Global variable used to control use AWS SMS to alert about problems
-# Initially set to False, toggled in check_authorization() as appropriate
+# If Sns_client is successfully set it will contain the botocore object and
+# no longer be == to False
+#-------------------------------------------------------------------------
 
-AWS_Valid = False
+Sns_client = False
 
 #-----------------------------------------------------
 # Return current date and time configured for local TZ
 #-----------------------------------------------------
 
 def t_stamp():
-    t = time.time()
-    time_msg = time.strftime('%Y-%m-%d %H:%M:%S %Z: ', time.localtime(t))
+    t=time.time()
+    time_msg=time.strftime('%Y-%m-%d %H:%M:%S %Z: ', time.localtime(t))
     return (time_msg)
 
 #--------------------------------------------------------------
@@ -70,67 +73,64 @@ def t_stamp():
 
 def validate_aws_env():
     try:
-        aws_profile = os.environ["AWS_PROFILE"]
-        resp = input ('AWS_PROFILE = [{aws_profile}]. Press enter to confirm or specify new: ')
+        aws_profile=os.environ['AWS_PROFILE']
+        resp = input('AWS_PROFILE = [{}]. Press enter to confirm '
+                     'or specify new: '.format(aws_profile))
 
         if bool(resp.strip()):
-            print ('AWS Profile changed to [{resp}]')
+            print('AWS Profile changed to [{}]'.format(resp))
             aws_profile = resp
 
     except KeyError:
-        aws_profile = input ("AWS_PROFILE not set. Please enter a valid AWS_PROFILE: ")
+        aws_profile=input('AWS_PROFILE not set. Enter a valid AWS_PROFILE: ')
 
-    os.environ["AWS_PROFILE"] = aws_profile
+    os.environ['AWS_PROFILE'] = aws_profile
 
     while True:             # Allow user multiple attempts to get it right
         try:
-            target_phone = os.environ["CELL_PHONE"]
-            resp = input ('CELL_PHONE = [{target_phone}]. Press enter to confirm or specify new: ')
+            target_phone = os.environ['CELL_PHONE']
+            resp = input('CELL_PHONE = [{target_phone}]. Press enter to confirm '
+                         'or specify new: ')
 
             if bool(resp.strip()):
-                print ('Mobile changed to [{resp}]')
+                print('Mobile changed to [{resp}]')
                 target_phone = resp
 
         except KeyError:
-            target_phone = input ("CELL_PHONE not set. Enter a valid Mobile # [+12345679999]: ")
+            target_phone=input ('CELL_PHONE not set. Enter a valid Mobile '
+                                '[+12345679999]: ')
 
         # Validate phone number format, break if correct, warn and loop if not
 
         if (len(target_phone) == 12) and (target_phone[0:2] == '+1'):
-            os.environ["CELL_PHONE"] = target_phone
+            os.environ['CELL_PHONE'] = target_phone
             break
         else:
-            print ("Error: phone # must start with +1 followed by 10 digits")
+            print ('Error: phone # must start with +1 followed by 10 digits')
 
     return
 
 #----------------------------------------------------------------------------
 # Confirm user is known to AWS and that user has required SNS authorization
-# Assumes that environment variables have been previously set. If attempt to
-# send initial SMS message via SNS succeeds, set global AWS_Valid to True
 # ---------------------------------------------------------------------------
 
 def validate_aws_auth(service):
 
-    mobile = os.environ["CELL_PHONE"]
-    user = os.environ["AWS_PROFILE"]
-    message = "Begin Monitoring: " + target_URL
-
-    global AWS_Valid                       # Make global so we can toggle
+    mobile=os.environ['CELL_PHONE']
+    user=os.environ['AWS_PROFILE']
+    message='Begin Monitoring: ' + target_URL
+    client=False
 
     try:
-        client = boto3.client(service)
+        client=boto3.client(service)
         client.publish(PhoneNumber=mobile, Message=message)
-        AWS_Valid = True
 
     except ProfileNotFound:
-        print ("Error: AWS credentials not found for [{}]".format(user))
-        print ("To configure, run: aws configure --profile " + user)
-        client = False
+        print ('Error: AWS credentials not found for [{}]'.format(user))
+        print ('To configure, run: aws configure --profile ' + user)
 
     except ClientError:
-        print ("Error: User [{}] has inadequate AWS permissions".format(user))
-        client = False
+        print ('Error: User [{}] has inadequate AWS permissions'.format(user))
 
     return client
 
@@ -142,22 +142,22 @@ def validate_aws_auth(service):
 
 def send_sms(client, message):
 
-    mobile_num = os.environ["CELL_PHONE"]
+    mobile_num=os.environ['CELL_PHONE']
 
-    send_console ("Sending SMS", "Msg= {}, num= {}".format(message, mobile_num))
+    send_console('Sending SMS', 'Msg= {}, num= {}'.format(message, mobile_num))
 
     try:
         client.publish(PhoneNumber=mobile_num, Message=message)
     except ClientError:
-        send_console ("Error:", "Unable to send SMS message via AWS", "\n")
+        send_console ('Error:', 'Unable to send SMS message via AWS', '\n')
 
 #-------------------------------------------------------------
 # Print output to console with time stamp. Output consists of
 # message detail (raw_msg) and summary info (short_msg)
 #-------------------------------------------------------------
 
-def send_console(short_msg, raw_msg = "", cr = ""):
-    print(cr + "{} {}: {}".format(t_stamp(), short_msg, raw_msg))
+def send_console(short_msg, raw_msg = '', cr = ''):
+    print(cr + '{} {}: {}'.format(t_stamp(), short_msg, raw_msg))
     return
 
 #--------------------------------------------------------
@@ -165,10 +165,10 @@ def send_console(short_msg, raw_msg = "", cr = ""):
 #--------------------------------------------------------
 
 def gen_progress(*chars):
-    i = 0
+    i=0
     while True:
         yield chars[i]
-        i = 0 if i == (len(chars) - 1) else (i + 1)
+        i=0 if i == (len(chars) - 1) else (i + 1)
 
 #------------------------------------------------------------
 # Main body of program
@@ -176,21 +176,24 @@ def gen_progress(*chars):
 
 def main():
 
+
+    global Sns_client             # If AWS Monitoring, contains botocore object
+
     # Parse input looking for argument to specify AWS SMS integration
 
     arg_cnt = len(sys.argv)
 
     if arg_cnt > 2:
-        print("Usage: {} <-sns>".format(sys.argv[0]))
+        print('Usage: {} <-sns>'.format(sys.argv[0]))
         raise SystemExit()
-    elif arg_cnt == 2 and sys.argv[1] != "-sns":
-        print("Usage: {} <-sns>".format(sys.argv[0]))
+    elif arg_cnt == 2 and sys.argv[1] != '-sns':
+        print('Usage: {} <-sns>'.format(sys.argv[0]))
         raise SystemExit()
-    elif arg_cnt == 2 and sys.argv[1] == "-sns":
-        print("Configuring for AWS SNS notification")
+    elif arg_cnt == 2 and sys.argv[1] == '-sns':
+        print('Configuring for AWS SNS notification')
         validate_aws_env()
-        client = validate_aws_auth('sns')
-        if client == False:
+        Sns_client = validate_aws_auth('sns')
+        if Sns_client == False:
             raise SystemExit()
 
     # Initialize variables for good measure. All will be reset in main loop
@@ -205,10 +208,10 @@ def main():
         # Sleep for specified time interval, if not first time through loop
 
         if first_Pass == True:
-            send_console("Operating Systems Type is", os.name)
-            send_console("Begin monitoring URL", target_URL)
-            send_console("Monitoring interval [{}s], response threshold [{}s]".format(test_interval, target_timeout))
-            if AWS_Valid: send_console("AWS SNS Notification is active for", target_URL)
+            send_console('Operating Systems Type is', os.name)
+            send_console('Begin monitoring URL', target_URL)
+            send_console('Monitoring interval [{}s], response threshold [{}s]'.format(test_interval, target_timeout))
+            if Sns_client: send_console('AWS SNS Notification is active for', target_URL)
             prog_char = gen_progress('/', '-', '\\', '-')
             first_Pass = False
         else:
@@ -218,42 +221,42 @@ def main():
         # Send get request to specified URL and trap errors
 
         try:
-            start = timer()
-            resp_URL = requests.get(target_URL, timeout=target_timeout)
-            latency = timer() - start
+            start=timer()
+            resp_URL=requests.get(target_URL, timeout=target_timeout)
+            latency=timer() - start
 
             # Check for problems with HTTP response and parse errors
 
             resp_URL.raise_for_status()
 
         except requests.exceptions.Timeout as e1:
-            send_console("Timeout Error", e1, "\n")
-            if AWS_Valid: send_sms(client, "Timeout error")
+            send_console('Timeout Error', e1, '\n')
+            if Sns_client: send_sms(Sns_client, 'Timeout error')
             continue
 
         except requests.exceptions.ConnectionError as e2:
-            send_console("Connection Error", e2, "\n")
-            if AWS_Valid: send_sms(client, "Connection Error")
+            send_console('Connection Error', e2, '\n')
+            if Sns_client: send_sms(Sns_client, 'Connection Error')
             continue
 
         # For HTTP or Unknown errors, log error and leave loop
 
         except requests.exceptions.HTTPError as e3:
-            send_console("HTTP Error", e3, "\n")
-            if AWS_Valid: send_sms(client, "HTTP Error")
+            send_console('HTTP Error', e3, '\n')
+            if Sns_client: send_sms(Sns_client, 'HTTP Error')
             break
 
         except requests.exceptions.RequestException as e4:
-            send_console("Unknown Error", e4, "\n")
-            if AWS_Valid: send_sms(client, "Unknown Error")
+            send_console('Unknown Error', e4, '\n')
+            if Sns_client: send_sms(Sns_client, 'Unknown Error')
             break
 
         # Calculate latency on URL get request. Complain if too slow
 
         if latency >= target_timeout:
-            err_msg = "{:4.2f}s, threshold: {}s".format(latency, target_timeout)
-            send_console("Slow response", err_msg, "\n")
-            if AWS_Valid: send_sms(client, "Slow response: " + err_msg)
+            err_msg = '{:4.2f}s, threshold: {}s'.format(latency, target_timeout)
+            send_console('Slow response', err_msg, '\n')
+            if Sns_client: send_sms(Sns_client, 'Slow response: ' + err_msg)
 
         # Compute SHA1 hash of the URL contents so we can compare against previous.
 
@@ -261,23 +264,23 @@ def main():
 
         if current_Hash != previous_Hash:
             if previous_Hash == None:
-                send_console("Initial URL hash", current_Hash)
+                send_console('Initial URL hash', current_Hash)
             else:
-                send_console("URL Hash changed to", current_Hash, "\n")
-                if AWS_Valid: send_sms(client, "Web Site Contents changed")
+                send_console('URL Hash changed to', current_Hash, '\n')
+                if Sns_client: send_sms(Sns_client, 'Web Site Contents changed')
 
             previous_Hash = current_Hash
 
     # If reaching this point, something unexpected has happened
 
-    send_console("Abort", "Program experienced unexpected problem", "\n")
-    if AWS_Valid: send_sms(client, "Monitoring terminated due to unexpected problem")
+    send_console('Abort', 'Program experienced unexpected problem', '\n')
+    if Sns_client: send_sms(Sns_client, 'Monitoring terminated due to unexpected problem')
     raise SystemExit()
 
 # Signal handler for CTRL-C manual termination
 
 def signal_handler(signal, frame):
-    send_console("Program terminated manually", "", "\n")
+    send_console('Program terminated manually', '', '\n')
     raise SystemExit()
 
 # If called from shell as script
