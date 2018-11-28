@@ -12,8 +12,8 @@
 +-------------------------------------------------------------------------------
 '''
 
-__author__      = 'Michael E. OConnor'
-__copyright__   = 'Copyright 2018'
+__author__     ='Michael E. OConnor'
+__copyright__  ='Copyright 2018'
 
 import os
 import sys
@@ -42,7 +42,7 @@ except ImportError:
 # in the GUI. 'DEFAULT' entry is use to determine the pre-selected URL
 #--------------------------------------------------------------------------
 
-sites = {
+sites={
     'Portfolio': 'https://www.mikeoc.me',
     'Keto Legal': 'https://www.ketolegal.com',
     'Google.com': 'https://www.google.com',
@@ -56,14 +56,14 @@ sites = {
 # no longer be == to False
 #-------------------------------------------------------------------------
 
-Sns_client = False
+Sns_client=False
 
 #-------------------------------------------------------------------------
 # Global variable used as a flag to control termination of monitoring thread.
 # Set to True initially, toggled in gui thread and checked in monitor thread.
 #-------------------------------------------------------------------------
 
-keep_monitoring = True
+keep_monitoring=True
 
 #-----------------------------------------------------
 # Return current date and time configured for local TZ
@@ -84,12 +84,12 @@ def t_stamp():
 def validate_aws_env():
     try:
         aws_profile=os.environ['AWS_PROFILE']
-        resp = input('AWS_PROFILE = [{}]. Press enter to confirm '
+        resp=input('AWS_PROFILE=[{}]. Press enter to confirm '
                      'or specify new: '.format(aws_profile))
 
         if bool(resp.strip()):
             print('AWS Profile changed to [{}]'.format(resp))
-            aws_profile = resp
+            aws_profile=resp
 
     except KeyError:
         aws_profile=input('AWS_PROFILE not set. '
@@ -100,7 +100,7 @@ def validate_aws_env():
     while True:             # Allow user multiple attempts to get it right
         try:
             target_phone=os.environ['CELL_PHONE']
-            resp=input('CELL_PHONE = [{target_phone}]. Press enter to confirm '
+            resp=input('CELL_PHONE=[{target_phone}]. Press enter to confirm '
                         'or specify new: ')
 
             if bool(resp.strip()):
@@ -167,7 +167,7 @@ def send_sms(client, message):
 # message detail (raw_msg) and summary info (short_msg)
 #-------------------------------------------------------------
 
-def send_console(short_msg, raw_msg = '', cr = ''):
+def send_console(short_msg, raw_msg='', cr=''):
     print(cr + '{} {}: {}'.format(t_stamp(), short_msg, raw_msg))
     return
 
@@ -187,18 +187,18 @@ class Monitor_Gui:
         self.s.configure('TLabel', background='yellow', foreground='white')
 
         master.title('Website Monitoring Tool')
-        frame0=ttk.Panedwindow(master, orient = HORIZONTAL)
+        frame0=ttk.Panedwindow(master, orient=HORIZONTAL)
         frame0.pack(fill=BOTH, expand=True)
-        frame1=ttk.Frame(frame0, width = 100, height = 300, relief = SUNKEN)
-        frame2=ttk.Frame(frame0, width = 1000, height = 300, relief = SUNKEN)
-        frame0.add(frame1, weight = 1)
-        frame0.add(frame2, weight = 10)
+        frame1=ttk.Frame(frame0, width=100, height=300, relief=SUNKEN)
+        frame2=ttk.Frame(frame0, width=1000, height=300, relief=SUNKEN)
+        frame0.add(frame1, weight=1)
+        frame0.add(frame2, weight=10)
 
         # Build Radio Buttons used to select what and how we want to monitor
         # site{} contents defined near top of this module
 
         Label(frame1, text='Web Site', bg='black', fg='white', justify=LEFT).pack(fill=X)
-        self.site = StringVar()
+        self.site=StringVar()
         for k,v in sites.items():
             if k != '_DEFAULT_':
                 ttk.Radiobutton(frame1, text=k, variable=self.site, value=v).pack(anchor='w')
@@ -215,9 +215,9 @@ class Monitor_Gui:
                                 value=300).pack(anchor='w')
         self.period.set(5)
 
-        Label(frame1, text = 'Timeout', bg='black', fg='white',
-                      justify = LEFT).pack(fill=X)
-        self.timeout = IntVar()
+        Label(frame1, text='Timeout', bg='black', fg='white',
+                      justify=LEFT).pack(fill=X)
+        self.timeout=IntVar()
         ttk.Radiobutton(frame1, text='1 seconds', variable=self.timeout,
                                 value=1).pack(anchor='w')
         ttk.Radiobutton(frame1, text='3 seconds', variable=self.timeout,
@@ -228,26 +228,26 @@ class Monitor_Gui:
 
         # Build Button used to start / stop monitoring
 
-        self.start_button = ttk.Button(frame1)
+        self.start_button=ttk.Button(frame1)
         self.start_button.config(text=self.bstate.get(), command=self.start)
         self.s.configure('TButton', foreground='green', relief='raised',
                                     padding=5, state=DISABLED)
-        self.start_button.pack(anchor = 's')
+        self.start_button.pack(anchor='s')
 
         # Build Text Box with Scrollbar we will use to display Results
 
-        self.result_box = Text(frame2, width=100, height=20)
-        scrollbar = Scrollbar(frame2, orient=VERTICAL, command=self.result_box.yview)
+        self.result_box=Text(frame2, width=100, height=20)
+        scrollbar=Scrollbar(frame2, orient=VERTICAL, command=self.result_box.yview)
         scrollbar.pack(side=RIGHT, fill=Y)
         self.result_box['yscrollcommand']=scrollbar.set
-        self.result_box.pack(side=LEFT, fill=BOTH, expand = YES)
+        self.result_box.pack(side=LEFT, fill=BOTH, expand=YES)
 
     def start(self):
         '''Set monitoring flag to True, start monitoring thread and toggle button
         '''
         global keep_monitoring      # Checked in monitoring thread
 
-        keep_monitoring = True
+        keep_monitoring=True
         monitor(tbox=self.result_box, url=self.site.get(),
                 interval=self.period.get(), timeout=self.timeout.get())
         self.master.title('Monitoring: ' + self.site.get())
@@ -258,7 +258,7 @@ class Monitor_Gui:
         '''
         global keep_monitoring
 
-        keep_monitoring = False
+        keep_monitoring=False
         self.master.title('Web Site Monitoring Tool')
         self.result_box.delete(1.0, 'end')
         self.toggle_button()
@@ -304,7 +304,7 @@ class monitor(threading.Thread):
     def run(self):
         '''Primary worker function gets content of web site and checks for errors
         '''
-        previous_Hash = None
+        previous_Hash=None
 
         while keep_monitoring:
             start=timer()
@@ -371,8 +371,8 @@ class monitor(threading.Thread):
             if keep_monitoring == True:
                 self.tbox.insert(END, '|')
 
-    def output(self, short_msg, raw_msg = '', cr = ''):
-        _msg = '{}{} {}: {}\n'.format(cr, t_stamp(), short_msg, raw_msg)
+    def output(self, short_msg, raw_msg='', cr=''):
+        _msg='{}{} {}: {}\n'.format(cr, t_stamp(), short_msg, raw_msg)
         self.tbox.insert(END, _msg)
 
 #------------------------------------------------------------
