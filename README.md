@@ -1,6 +1,6 @@
 # Web_Site_Monitor
 
-Simple Python program which opens a target URL and then loops at a specified interval checking
+Python program which opens a target URL and then loops at a specified interval checking
 
 1. Accessibility
 
@@ -11,8 +11,12 @@ Simple Python program which opens a target URL and then loops at a specified int
 If there are problems with these, the program either terminates or reports the problem with a timestamp
 
 Program optionally utilizes AWS SNS service to alert a mobile number of problems.
-As such, AWS SDK with Boto3 needs to be installed and configured. Program
-requires and promts for the following environment:
+As such, AWS SDK with Boto3 needs to be installed and configured.
+
+To enable AWS SNS, invoke program rom command line using '-sns' argument
+
+With enabled, program queries the following AWS environment variables. If not found,
+user is prompted to enter them:
 
   AWS_PROFILE = profile defined in users ~/.aws/configure and credentials files
 
@@ -23,7 +27,8 @@ AWS SNS service: https://www.reddit.com/r/aws/comments/63vldy/our_experience_usi
 
 # Requirements
 
-Python3
+- Python3
+- Tkinter (for GUI version)
 
 > $ brew install python3 (recommended method for MacOS)
 
