@@ -219,7 +219,7 @@ class Monitor_Gui:
         b = ttk.Radiobutton(frame1, text="5 seconds", variable=self.timeout, value=5).pack(anchor='w')
         self.timeout.set(1)
 
-        # Build Button used to start monitoring
+        # Build Button used to start / stop monitoring
 
         self.start_button = ttk.Button(frame1)
         self.start_button.config(text=self.bstate.get(), command=self.submit)
@@ -242,8 +242,8 @@ class Monitor_Gui:
 
         keep_monitoring = True
         monitor(tbox=self.result_box, url=self.site.get(), interval=self.period.get(), timeout=self.timeout.get())
-        self.toggle_button()
         self.master.title("Monitoring: " + self.site.get())
+        self.toggle_button()
 
     def clear(self):
         '''Clears output textbox, sets monitoring flag to False and
@@ -252,9 +252,9 @@ class Monitor_Gui:
         global keep_monitoring
 
         keep_monitoring = False
-        self.toggle_button()
         self.master.title("Web Site Monitoring Tool")
         self.result_box.delete(1.0, 'end')
+        self.toggle_button()
 
     def toggle_button(self):
         '''Toggle button callback function and display attributes
