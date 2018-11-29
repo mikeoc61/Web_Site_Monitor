@@ -12,8 +12,8 @@
 +-------------------------------------------------------------------------------
 '''
 
-__author__     ='Michael E. OConnor'
-__copyright__  ='Copyright 2018'
+__author__     = 'Michael E. OConnor'
+__copyright__  = 'Copyright 2018'
 
 import os
 import sys
@@ -21,11 +21,9 @@ import time
 import signal
 import requests
 import threading
-#from tkinter import *
-from tkinter import Tk, Label, Button, Scrollbar, IntVar, StringVar, Text
+from tkinter import ttk, Tk, Label, Button, Scrollbar, IntVar, StringVar, Text
 from tkinter import BOTH, END, HORIZONTAL, VERTICAL, W, E, N, S, X, Y
 from tkinter import ACTIVE, YES, RIGHT, LEFT, SUNKEN, DISABLED
-from tkinter import ttk
 from hashlib import sha1
 from timeit import default_timer as timer
 
@@ -42,7 +40,7 @@ except ImportError:
 # in the GUI. 'DEFAULT' entry is use to determine the pre-selected URL
 #--------------------------------------------------------------------------
 
-sites={
+sites = {
     'Portfolio': 'https://www.mikeoc.me',
     'Keto Legal': 'https://www.ketolegal.com',
     'Google.com': 'https://www.google.com',
@@ -51,27 +49,27 @@ sites={
     }
 
 #-------------------------------------------------------------------------
-# Global variable used to control use AWS SMS to alert about problems
+# Global variable used to control use of AWS SMS to alert about problems
 # If Sns_client is successfully set it will contain the botocore object and
 # no longer be == to False
 #-------------------------------------------------------------------------
 
-Sns_client=False
+Sns_client = False
 
 #-------------------------------------------------------------------------
 # Global variable used as a flag to control termination of monitoring thread.
 # Set to True initially, toggled in gui thread and checked in monitor thread.
 #-------------------------------------------------------------------------
 
-keep_monitoring=True
+keep_monitoring = True
 
 #-----------------------------------------------------
 # Return current date and time configured for local TZ
 #-----------------------------------------------------
 
 def t_stamp():
-    t=time.time()
-    time_msg=time.strftime('%Y-%m-%d %H:%M:%S %Z: ', time.localtime(t))
+    t = time.time()
+    time_msg = time.strftime('%Y-%m-%d %H:%M:%S %Z: ', time.localtime(t))
     return(time_msg)
 
 #--------------------------------------------------------------
@@ -83,38 +81,38 @@ def t_stamp():
 
 def validate_aws_env():
     try:
-        aws_profile=os.environ['AWS_PROFILE']
-        resp=input('AWS_PROFILE=[{}]. Press enter to confirm '
+        aws_profile = os.environ['AWS_PROFILE']
+        resp = input('AWS_PROFILE=[{}]. Press enter to confirm '
                      'or specify new: '.format(aws_profile))
 
         if bool(resp.strip()):
             print('AWS Profile changed to [{}]'.format(resp))
-            aws_profile=resp
+            aws_profile = resp
 
     except KeyError:
-        aws_profile=input('AWS_PROFILE not set. '
+        aws_profile = input('AWS_PROFILE not set. '
                           'Please enter a valid AWS_PROFILE: ')
 
-    os.environ['AWS_PROFILE']=aws_profile
+    os.environ['AWS_PROFILE'] = aws_profile
 
     while True:             # Allow user multiple attempts to get it right
         try:
-            target_phone=os.environ['CELL_PHONE']
-            resp=input('CELL_PHONE=[{target_phone}]. Press enter to confirm '
-                        'or specify new: ')
+            target_phone = os.environ['CELL_PHONE']
+            resp = input('CELL_PHONE=[{target_phone}]. Press enter to confirm '
+                         'or specify new: ')
 
             if bool(resp.strip()):
                 print('Mobile changed to [{resp}]')
-                target_phone=resp
+                target_phone = resp
 
         except KeyError:
-            target_phone=input('CELL_PHONE not set. Enter a valid '
-                               'Mobile # [+12345679999]: ')
+            target_phone = input('CELL_PHONE not set. Enter a valid '
+                                 'Mobile # [+12345679999]: ')
 
         # Validate phone number format, break if correct, warn and loop if not
 
         if (len(target_phone) == 12) and (target_phone[0:2] == '+1'):
-            os.environ['CELL_PHONE']=target_phone
+            os.environ['CELL_PHONE'] = target_phone
             break
         else:
             print('Error: phone # must start with +1 followed by 10 digits')
@@ -127,13 +125,13 @@ def validate_aws_env():
 
 def validate_aws_auth(service):
 
-    mobile=os.environ['CELL_PHONE']
-    user=os.environ['AWS_PROFILE']
-    message='Begin Monitoring: '
-    client=False
+    mobile = os.environ['CELL_PHONE']
+    user = os.environ['AWS_PROFILE']
+    message = 'Begin Monitoring: '
+    client = False
 
     try:
-        client=boto3.client(service)
+        client = boto3.client(service)
         client.publish(PhoneNumber=mobile, Message=message)
 
     except ProfileNotFound:
@@ -153,12 +151,12 @@ def validate_aws_auth(service):
 
 def send_sms(client, message):
 
-    mobile_num=os.environ['CELL_PHONE']
+    mobile_num = os.environ['CELL_PHONE']
 
     send_console('Sending SMS', 'Msg= {}, num= {}'.format(message, mobile_num))
 
     try:
-        client.publish(PhoneNumber=mobile_num, Message=message)
+        client.publish(PhoneNumber = mobile_num, Message = message)
     except ClientError:
         send_console('Error:', 'Unable to send SMS message via AWS', '\n')
 
@@ -167,7 +165,7 @@ def send_sms(client, message):
 # message detail (raw_msg) and summary info (short_msg)
 #-------------------------------------------------------------
 
-def send_console(short_msg, raw_msg='', cr=''):
+def send_console(short_msg, raw_msg = '', cr = ''):
     print(cr + '{} {}: {}'.format(t_stamp(), short_msg, raw_msg))
     return
 
@@ -177,20 +175,20 @@ class Monitor_Gui:
     '''
 
     def __init__(self, master):
-        self.master=master
-        self.bstate=StringVar()
+        self.master = master
+        self.bstate = StringVar()
         self.bstate.set('Start Monitoring')
 
-        self.s=ttk.Style()
-        self.s.configure('.', font=('Arial', 14))
+        self.s = ttk.Style()
+        self.s.configure('.', font = ('Arial', 14))
         self.s.configure('TButton', foreground='green', relief='sunken', padding=5)
         self.s.configure('TLabel', background='yellow', foreground='white')
 
         master.title('Website Monitoring Tool')
-        frame0=ttk.Panedwindow(master, orient=HORIZONTAL)
+        frame0 = ttk.Panedwindow(master, orient=HORIZONTAL)
         frame0.pack(fill=BOTH, expand=True)
-        frame1=ttk.Frame(frame0, width=100, height=300, relief=SUNKEN)
-        frame2=ttk.Frame(frame0, width=1000, height=300, relief=SUNKEN)
+        frame1 = ttk.Frame(frame0, width=100, height=300, relief=SUNKEN)
+        frame2 = ttk.Frame(frame0, width=1000, height=300, relief=SUNKEN)
         frame0.add(frame1, weight=1)
         frame0.add(frame2, weight=10)
 
@@ -198,15 +196,15 @@ class Monitor_Gui:
         # site{} contents defined near top of this module
 
         Label(frame1, text='Web Site', bg='black', fg='white', justify=LEFT).pack(fill=X)
-        self.site=StringVar()
+        self.site = StringVar()
         for k,v in sites.items():
             if k != '_DEFAULT_':
                 ttk.Radiobutton(frame1, text=k, variable=self.site, value=v).pack(anchor='w')
         self.site.set(sites['_DEFAULT_'])
 
-        Label(frame1, text='Sample period', bg='black',
+        Label(frame1, text = 'Sample period', bg='black',
                       fg='white', justify=LEFT).pack(fill=X)
-        self.period=IntVar()
+        self.period = IntVar()
         ttk.Radiobutton(frame1, text='5 seconds', variable=self.period,
                                 value=5).pack(anchor='w')
         ttk.Radiobutton(frame1, text='1 minute', variable=self.period,
@@ -217,7 +215,7 @@ class Monitor_Gui:
 
         Label(frame1, text='Timeout', bg='black', fg='white',
                       justify=LEFT).pack(fill=X)
-        self.timeout=IntVar()
+        self.timeout = IntVar()
         ttk.Radiobutton(frame1, text='1 seconds', variable=self.timeout,
                                 value=1).pack(anchor='w')
         ttk.Radiobutton(frame1, text='3 seconds', variable=self.timeout,
@@ -228,7 +226,7 @@ class Monitor_Gui:
 
         # Build Button used to start / stop monitoring
 
-        self.start_button=ttk.Button(frame1)
+        self.start_button = ttk.Button(frame1)
         self.start_button.config(text=self.bstate.get(), command=self.start)
         self.s.configure('TButton', foreground='green', relief='raised',
                                     padding=5, state=DISABLED)
@@ -236,10 +234,10 @@ class Monitor_Gui:
 
         # Build Text Box with Scrollbar we will use to display Results
 
-        self.result_box=Text(frame2, width=100, height=20)
-        scrollbar=Scrollbar(frame2, orient=VERTICAL, command=self.result_box.yview)
+        self.result_box = Text(frame2, width=100, height=20)
+        scrollbar = Scrollbar(frame2, orient=VERTICAL, command=self.result_box.yview)
         scrollbar.pack(side=RIGHT, fill=Y)
-        self.result_box['yscrollcommand']=scrollbar.set
+        self.result_box['yscrollcommand'] = scrollbar.set
         self.result_box.pack(side=LEFT, fill=BOTH, expand=YES)
 
     def start(self):
@@ -247,7 +245,7 @@ class Monitor_Gui:
         '''
         global keep_monitoring      # Checked in monitoring thread
 
-        keep_monitoring=True
+        keep_monitoring = True
         monitor(tbox=self.result_box, url=self.site.get(),
                 interval=self.period.get(), timeout=self.timeout.get())
         self.master.title('Monitoring: ' + self.site.get())
@@ -258,7 +256,7 @@ class Monitor_Gui:
         '''
         global keep_monitoring
 
-        keep_monitoring=False
+        keep_monitoring = False
         self.master.title('Web Site Monitoring Tool')
         self.result_box.delete(1.0, 'end')
         self.toggle_button()
@@ -288,14 +286,19 @@ class monitor(threading.Thread):
 
         threading.Thread.__init__(self, *args, **kwargs)
         self.setName('URL Monitor Thread')
-        self.tbox=tbox
-        self.url=url
-        self.interval=interval
-        self.timeout=timeout
-        self.daemon=True      # Stop all threads when program terminates
+        self.tbox = tbox
+        self.url = url
+        self.interval = interval
+        self.timeout = timeout
+        self.daemon = True      # Stop all threads when program terminates
 
-        self.output('Watching: {}, with Interval: {} and Timeout: {}'.format(
-                     self.url, self.interval, self.timeout), cr='\n')
+        self.tbox.tag_config('link', foreground="blue", underline=1)
+        self.tbox.tag_config('err', foreground="red", underline=0)
+
+        self.tbox.insert(END, t_stamp()+' Watching: ')
+        self.tbox.insert(END, self.url, ('link', 'href'+self.url))
+        self.tbox.insert(END, ' with interval: '+str(self.interval))
+        self.tbox.insert(END, ' and Timeout: '+str(self.timeout)+'\n')
 
         if Sns_client: self.output('AWS SNS Notification active for', self.url)
 
@@ -304,14 +307,14 @@ class monitor(threading.Thread):
     def run(self):
         '''Primary worker function gets content of web site and checks for errors
         '''
-        previous_Hash=None
+        previous_Hash = None
 
         while keep_monitoring:
-            start=timer()
+            start = timer()
 
             # Check for problems with HTTP response and parse errors
             try:
-                resp_URL=requests.get(self.url, timeout=self.timeout)
+                resp_URL = requests.get(self.url, timeout = self.timeout)
                 resp_URL.raise_for_status()
 
             except requests.exceptions.Timeout as e1:
@@ -338,17 +341,17 @@ class monitor(threading.Thread):
 
             # Calculate latency on URL get request. Complain if too slow
 
-            latency=timer() - start
+            latency = timer() - start
 
             if latency >= self.timeout:
-                err_msg='{}:{:4.2f}s, threshold: {}s'.format(
-                         self.url, latency, self.timeout)
+                err_msg = '{}:{:4.2f}s, threshold: {}s'.format(
+                               self.url, latency, self.timeout)
                 self.output('Slow response', err_msg, '\n')
                 if Sns_client: send_sms(Sns_client, 'Slow response: ' + err_msg)
 
             # Compute SHA1 hash of the URL contents so we can compare against previous.
 
-            current_Hash=sha1(resp_URL.content).hexdigest()
+            current_Hash = sha1(resp_URL.content).hexdigest()
 
             if current_Hash != previous_Hash:
                 if previous_Hash == None:
@@ -357,7 +360,7 @@ class monitor(threading.Thread):
                     self.output(self.url + ' Hash changed', current_Hash, '\n')
                     if Sns_client: send_sms(Sns_client, 'Web Site Contents changed')
 
-                previous_Hash=current_Hash
+                previous_Hash = current_Hash
 
             # Loop interval seconds while checking for flag state each second
 
@@ -372,7 +375,7 @@ class monitor(threading.Thread):
                 self.tbox.insert(END, '|')
 
     def output(self, short_msg, raw_msg='', cr=''):
-        _msg='{}{} {}: {}\n'.format(cr, t_stamp(), short_msg, raw_msg)
+        _msg = '{}{} {}: {}\n'.format(cr, t_stamp(), short_msg, raw_msg)
         self.tbox.insert(END, _msg)
 
 #------------------------------------------------------------
@@ -384,7 +387,7 @@ def main():
     global Sns_client
 
     # Parse input looking for argument to specify AWS SMS integration
-    arg_cnt=len(sys.argv)
+    arg_cnt = len(sys.argv)
 
     if arg_cnt > 2:
         print('Usage: {} <-sns>'.format(sys.argv[0]))
@@ -395,12 +398,12 @@ def main():
     elif arg_cnt == 2 and sys.argv[1] == '-sns':
         print('Configuring for AWS SNS notification')
         validate_aws_env()
-        Sns_client=validate_aws_auth('sns')
+        Sns_client = validate_aws_auth('sns')
         if Sns_client == False:
             print('Error: Unable to configuring for AWS SNS notification')
             raise SystemExit()
 
-    root=Tk()
+    root = Tk()
     Monitor_Gui(root)
     root.mainloop()
 
