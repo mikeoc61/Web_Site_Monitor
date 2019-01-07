@@ -1,21 +1,23 @@
 # Web_Site_Monitor
 
-Python program which opens a target URL and then loops at a specified interval checking
+Python program which opens a target URL and then loops at a specified interval
+on health of the web site, specifically:
 
 1. Accessibility
 
 2. Latency
 
-3. Changes based on a hash of contents
+3. Content changes based on a hash calculation and comparison with previous
 
-If there are problems with these, the program either terminates or reports the problem with a timestamp
+If there are problems with these, the program either terminates or reports the
+issue with a timestamp and continues to monitor. 
 
 Program optionally utilizes AWS SNS service to alert a mobile number of problems.
 As such, AWS SDK with Boto3 needs to be installed and configured.
 
-To enable AWS SNS, invoke program rom command line using '-sns' argument
+To enable AWS SNS, invoke program from command line using '-sns' argument
 
-With enabled, program queries the following AWS environment variables. If not found,
+With SNS enabled, program queries the following AWS environment variables. If not found,
 user is prompted to enter them:
 
   AWS_PROFILE = profile defined in users ~/.aws/configure and credentials files
